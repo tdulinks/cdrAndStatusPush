@@ -42,7 +42,7 @@ func main() {
 
 	// 持续创建新的呼叫，使用更短的时间间隔
 	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond) // 减少到100毫秒
+		ticker := time.NewTicker(1 * time.Millisecond) // 减少到10毫秒以提高并发
 		defer ticker.Stop()
 		for range ticker.C {
 			if err := callStatusService.StartNewCall(); err != nil {
@@ -53,13 +53,14 @@ func main() {
 
 	// 持续批量更新现有呼叫的状态
 	var wg sync.WaitGroup
-	wg.Add(cfg.Push.Workers * 2)
+	workerCount := cfg.Push.Workers * 10 // 增加工作协程数量
+	wg.Add(workerCount)
 
 	// 启动更多的工作协程来处理状态更新
-	for i := 0; i < cfg.Push.Workers*2; i++ {
+	for i := 0; i < workerCount; i++ {
 		go func() {
 			defer wg.Done()
-			ticker := time.NewTicker(50 * time.Millisecond) // 更频繁地检查和更新状态
+			ticker := time.NewTicker(20 * time.Millisecond) // 更频繁地检查和更新状态
 			defer ticker.Stop()
 			for range ticker.C {
 				if err := callStatusService.UpdateCallStatus(); err != nil {
