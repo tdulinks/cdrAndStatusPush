@@ -2,20 +2,15 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"os"
-	"sync"
-	"time"
 
+	"cdr/cmd/common"
 	"cdr/config"
 	"cdr/service"
 )
 
 func main() {
 	log.Println("呼叫状态推送系统启动...")
-
-	// 初始化随机数种子
-	rand.Seed(time.Now().UnixNano())
 
 	// 加载配置
 	cfg, err := config.LoadConfig(config.GetConfigPath())
@@ -40,36 +35,20 @@ func main() {
 		}
 	}()
 
-	// 持续创建新的呼叫，使用更短的时间间隔
-	go func() {
-		ticker := time.NewTicker(1 * time.Millisecond) // 减少到10毫秒以提高并发
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := callStatusService.StartNewCall(); err != nil {
-				log.Printf("创建新呼叫失败: %v", err)
-			}
+	// 使用通用工作池处理呼叫状态更新
+	common.StartWorkerPool(cfg.Push.Workers, func() error {
+		// 先创建新呼叫
+		if err := callStatusService.StartNewCall(); err != nil {
+			log.Printf("创建新呼叫失败: %v", err)
+			return err
 		}
-	}()
 
-	// 持续批量更新现有呼叫的状态
-	var wg sync.WaitGroup
-	workerCount := cfg.Push.Workers * 10 // 增加工作协程数量
-	wg.Add(workerCount)
-
-	// 启动更多的工作协程来处理状态更新
-	for i := 0; i < workerCount; i++ {
-		go func() {
-			defer wg.Done()
-			ticker := time.NewTicker(20 * time.Millisecond) // 更频繁地检查和更新状态
-			defer ticker.Stop()
-			for range ticker.C {
-				if err := callStatusService.UpdateCallStatus(); err != nil {
-					log.Printf("更新呼叫状态失败: %v", err)
-				}
-			}
-		}()
-	}
-
-	// 等待所有工作协程完成
-	wg.Wait()
+		// 然后更新现有呼叫的状态
+		if err := callStatusService.UpdateCallStatus(); err != nil {
+			log.Printf("更新呼叫状态失败: %v", err)
+			return err
+		}
+		return nil
+	})
 }
+

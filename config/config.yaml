@@ -1,16 +1,16 @@
 # 推送配置
 push:
   # CDR推送地址
-  cdr_url: "http://localhost:8080/callback/v1/record"
+  cdr_url: "http://localhost:8081/callback/v1/record"
   # 呼叫状态推送地址
-  status_url: "http://localhost:8080/callback/v1/status"
+  status_url: "http://localhost:8081/callback/v1/status"
   # 并发推送的工作协程数量
-  workers: 50
+  workers: 1000
 
 # 账号配置
 account:
   id: "TEST_ACCOUNT"
-  service_type: 100
+  service_type: 5000
 
 # 重试配置
 retry:
